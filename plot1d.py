@@ -4,7 +4,7 @@ Created on Sun Jun  2 16:44:35 2019
 
 @author: smrak@bu.edu
 """
-
+import satio
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -158,5 +158,64 @@ def plotRPA(XD, tlim=None, xlabel='mlat,mlt', remove_outliers=False,
             arg = XD.rpa.sel(data=label).values[idt]
             xlabels[i] += '\n{}'.format(arg[ix])
     ax3.set_xticklabels(xlabels)
+    
+    return fig
+
+def plotSWARM(XD, tlim=None, xlabel=['mlon', 'mlat'], figsize=[10,8], ms=3, 
+              title='', nticks=None, fs=2,
+              yvlim=[-10,10],ytelim=[1e3,1e4],ynilim=None):
+    
+    time = XD['time']
+    idt = (time >= tlim[0]) & (time <= tlim[1])
+    dt = time[idt].astype("datetime64[ms]")
+    Ni = XD['Ni'][idt]
+    Ni_d = satio.hpf(XD['Ni'], fs=fs, order=6, fc=0.1)
+    Ni_d = Ni_d[idt]
+    
+    ts = np.int64(dt)
+    
+    fig = plt.figure(figsize=[8,10])
+    ax1 = plt.subplot(411)
+    ax1.plot(ts, XD['V'][idt], '.b', ms=ms)
+    if yvlim is not None:
+        ax1.set_ylim(yvlim)
+    ax1.set_ylabel('Potential [V]')
+    
+    
+    ax2 = plt.subplot(412, sharex=ax1)
+    ax2.plot(ts, XD['Te'][idt], '.b', ms=ms)
+    if ytelim is not None:
+        ax2.set_ylim(ytelim)
+    ax2.set_ylabel('Te [K]')
+    
+    ax3 = plt.subplot(413, sharex=ax1)
+    ax3.semilogy(ts, Ni, '.b', ms=ms)
+    if ynilim is not None:
+        ax3.set_ylim(ynilim)
+    ax3.set_ylabel('Ni [/cm$^3$]')
+    
+    ax4 = plt.subplot(414, sharex=ax1)
+    ax4.plot(ts, Ni_d, 'b', ms=ms)
+    ax4.set_ylabel('$\delta$Ni [/cm$^3$]')
+    
+    plt.setp( ax1.get_xticklabels(), visible=False)
+    plt.setp( ax2.get_xticklabels(), visible=False)
+    plt.setp( ax3.get_xticklabels(), visible=False)
+    
+    ax1.set_xlim(ts[0], ts[-1])
+    
+    if nticks is not None:
+        ticks = np.linspace(0, dt.size-1, nticks).astype(np.int16)
+        ax4.set_xticks(ts[ticks])
+    
+    xti = np.where(np.isin(ts, np.int64(ax1.get_xticks())))[0]
+    xlabels = np.empty(xti.size, dtype='U30')
+    for i,ix in enumerate(xti):
+        xlabels[i] = dt[ix].astype(datetime).strftime('%H:%M') # UT
+    for label in xlabel:
+        for i,ix in enumerate(xti):
+            arg = XD[label][idt]
+            xlabels[i] += '\n{}'.format(np.round(arg[ix],2))
+    ax4.set_xticklabels(xlabels)
     
     return fig
